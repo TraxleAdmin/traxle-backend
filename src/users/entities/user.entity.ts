@@ -1,28 +1,28 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, OneToMany, CreateDateColumn } from 'typeorm';
 import { LoadRequest } from '../../load-requests/entities/load-request.entity';
-import { Load } from '../../loads/entities/load.entity'; // <-- Load import edildi
+import { Load } from '../../loads/entities/load.entity';
 
 @Entity('users')
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  // 🔥 KRİTİK DEĞİŞİKLİK: 
+  // Artık ID'yi veritabanı üretmiyor, Firebase'den gelen String ID'yi (UID) anahtar yapıyoruz.
+  @PrimaryColumn() 
   id: string;
 
-  @Column({ name: 'full_name' })
+  @Column({ name: 'full_name', nullable: true }) // İsim bazen boş gelebilir, hata vermesin diye nullable yaptık
   fullName: string;
 
-  @Column({ unique: true })
+  @Column({ unique: true, nullable: true })
   email: string;
 
   @Column({ nullable: true })
   password: string;
 
-  @Column()
+  @Column({ nullable: true }) // Rol henüz atanmamış olabilir
   role: string; 
 
-  // --- EKLENEN KISIM: Kullanıcının açtığı ilanlar ---
   @OneToMany(() => Load, (load) => load.shipper)
   loads: Load[];
-  // --------------------------------------------------
 
   @OneToMany(() => LoadRequest, (request) => request.carrier)
   requests: LoadRequest[];
