@@ -11,17 +11,22 @@ import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(), // .env dosyası okumak için
+    ConfigModule.forRoot(), 
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres', // Varsayılan kullanıcı
-      password: 'admin', // <-- DİKKAT: Kendi şifreni buraya yaz!
-      database: 'traxle_db',
+      // 🔥 KRİTİK DEĞİŞİKLİK: Önce Environment Variable'a bak, yoksa (lokaldeysen) diğerlerini kullan
+      url: process.env.DATABASE_URL, 
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT) || 5432,
+      username: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'admin',
+      database: process.env.DB_NAME || 'traxle_db',
+      
       autoLoadEntities: true,
-      synchronize: true, // Üretimde false olmalı, verileri kaybetmemek için kapalı tutuyoruz
-    }), UsersModule, VehiclesModule, LoadsModule, LoadRequestsModule, AuthModule,
+      synchronize: true, // Not: Canlıya geçince bunu false yapıp migration kullanmak daha güvenlidir
+      ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false, // Render için SSL şart
+    }), 
+    UsersModule, VehiclesModule, LoadsModule, LoadRequestsModule, AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
