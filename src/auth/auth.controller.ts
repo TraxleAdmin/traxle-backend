@@ -27,7 +27,6 @@ export class AuthController {
       throw new BadRequestException('E-posta ve yeni şifre alanları zorunludur.');
     }
 
-    // İşlemi doğrudan AuthService'deki güvenli metoda devrediyoruz
     const result = await this.authService.resetPassword(req.email, req.newPassword);
     return { message: result.message };
   }

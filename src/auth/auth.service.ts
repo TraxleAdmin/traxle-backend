@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
+import * as admin from 'firebase-admin'; // 🔥 FIREBASE TANRI MODU EKLENDİ
 
 @Injectable()
 export class AuthService {
@@ -62,13 +63,37 @@ export class AuthService {
     };
   }
 
-  // --- 🔥 YENİ: ŞİFRE SIFIRLAMA MANTIĞI (Bcrypt Entegreli) ---
+  // --- 🔥 ŞİFRE SIFIRLAMA MANTIĞI (Neon DB + Firebase Senkronize) ---
   async resetPassword(email: string, newPassword: string) {
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    try {
+      // 1. NEON DB İÇİN KRİPTOLAMA
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // UsersService içindeki şifre güncelleme metoduna Hashlenmiş şifreyi gönderiyoruz
-    await this.usersService.updatePassword(email, hashedPassword);
-    return { success: true, message: 'Şifre başarıyla güncellendi!' };
+      // Neon veritabanında şifreyi güncelle
+      await this.usersService.updatePassword(email, hashedPassword);
+      console.log(`✅ [Neon DB] ${email} şifresi güncellendi.`);
+
+      // 2. FIREBASE AUTH İÇİN SENKRONİZASYON
+      try {
+        // Eğer Firebase Admin başlatılmışsa işlemi yap
+        if (admin.apps.length > 0) {
+          const userRecord = await admin.auth().getUserByEmail(email);
+          await admin.auth().updateUser(userRecord.uid, {
+            password: newPassword, // Firebase kendi içinde hashler, düz veriyoruz
+          });
+          console.log(`✅ [Firebase Auth] ${email} şifresi Firebase'de senkronize edildi.`);
+        } else {
+          console.warn(`⚠️ [Firebase Auth] Uyarı: Firebase Admin başlatılmamış. Sadece Neon güncellendi.`);
+        }
+      } catch (firebaseError: any) {
+        console.warn(`⚠️ [Firebase Auth] Uyarı: Kullanıcı Firebase'de bulunamadı veya güncellenemedi: ${firebaseError.message}`);
+      }
+
+      return { success: true, message: 'Şifreniz başarıyla güncellendi!' };
+    } catch (error) {
+      console.error('❌ Şifre Güncelleme Hatası:', error);
+      throw new InternalServerErrorException('Şifre güncellenirken kritik bir hata oluştu.');
+    }
   }
 }
