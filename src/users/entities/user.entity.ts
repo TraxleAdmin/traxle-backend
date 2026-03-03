@@ -19,7 +19,13 @@ export class User {
   password: string;
 
   @Column({ nullable: true }) // Rol henüz atanmamış olabilir
-  role: string; 
+  role: string;
+  
+  @Column({ nullable: true })
+  verificationCode: string;
+
+  @Column({ default: false })
+  isVerified: boolean;
 
   @OneToMany(() => Load, (load) => load.shipper)
   loads: Load[];
